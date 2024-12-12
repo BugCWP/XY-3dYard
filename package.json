@@ -10,6 +10,7 @@
     "license": "ISC",
     "description": "",
     "dependencies": {
+        "cannon-es": "^0.20.0",
         "three": "^0.152.2"
     },
     "devDependencies": {
