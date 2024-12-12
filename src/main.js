@@ -230,8 +230,8 @@ function getJson(dataName){
 function drawContainerZoneGrid(zone) {
     const { X, Y, ZoneDirection, XDirection, YDirection, X1, Y1, Color, Name } = zone;
 
-    const boxLength = 12.5; // 每个贝位的长度
-    const boxHeight = 5;    // 每个排位的高度
+    const boxLength = 12.5; // 贝位的长边（箱位的宽度）
+    const boxHeight = 5;    // 排位的短边（箱位的高度）
     const gridColor = new THREE.Color(Color || 0xFFFFFF); // 网格颜色
 
     const lineMaterial = new THREE.LineBasicMaterial({ color: gridColor });
@@ -240,30 +240,52 @@ function drawContainerZoneGrid(zone) {
 
     // 起点坐标
     const startX = X1 || 0; // 起点 X 坐标
-    const startZ = -(Y1 || 0); // 起点 Z 坐标（负值向下）
+    const startZ = Y1 || 0; // 起点 Z 坐标（负值向下）
 
-    // 方向控制因子
-    const isHorizontal = ZoneDirection === false; // 判断是否水平布局
-    const xFactor = XDirection ? 1 : -1;  // 贝位方向（向左或向右）
-    const zFactor = YDirection ? 1 : -1;  // 排位方向（向上或向下）
+    // 计算方向因子
+    let majorStep, minorStep, xFactor, zFactor;
+
+    if (ZoneDirection === false) {
+        // 水平布局
+        majorStep = boxLength;  // 贝位沿水平方向（列方向）
+        minorStep = boxHeight;  // 排位沿垂直方向（行方向）
+
+        // 贝位方向
+        xFactor = XDirection ? 1 : -1;  // XDirection 控制向左或向右
+
+        // 排方向
+        zFactor = YDirection ? 1 : -1; // YDirection 控制向上或向下
+    } else {
+        // 垂直布局
+        majorStep = boxHeight;  // 行数沿垂直方向（行方向）
+        minorStep = boxLength;  // 列数沿水平方向（列方向）
+
+        // 贝位方向
+        xFactor = XDirection ? 1 : -1; // XDirection 控制向下或向上
+
+        // 排方向
+        zFactor = YDirection ? -1 : 1; // YDirection 控制向左或向右
+    }
 
     // 绘制横向线条（行）
-    for (let row = 0; row < Y; row++) {
-        const z = startZ - row * (isHorizontal ? boxHeight : boxLength) * zFactor;
-        const xEnd = startX + X * (isHorizontal ? boxLength : boxHeight) * xFactor;
-        vertices.push(startX, 0.1, z, xEnd, 0.1, z);
+    for (let row = 0; row < Y; row++) { // Y 控制行数
+        const z = startZ - row * minorStep * zFactor;
+        const xStart = startX;
+        const xEnd = startX + X * majorStep * xFactor;
+        vertices.push(xStart, 0.1, z, xEnd, 0.1, z);
     }
 
     // 绘制纵向线条（列）
-    for (let col = 0; col < X; col++) {
-        const x = startX + col * (isHorizontal ? boxLength : boxHeight) * xFactor;
-        const zEnd = startZ - Y * (isHorizontal ? boxHeight : boxLength) * zFactor;
-        vertices.push(x, 0.1, startZ, x, 0.1, zEnd);
+    for (let col = 0; col < X; col++) { // X 控制列数
+        const x = startX + col * majorStep * xFactor;
+        const zStart = startZ;
+        const zEnd = startZ - Y * minorStep * zFactor;
+        vertices.push(x, 0.1, zStart, x, 0.1, zEnd);
     }
 
     // 绘制封口线（四个边）
-    const bottomZ = startZ - Y * (isHorizontal ? boxHeight : boxLength) * zFactor;
-    const xEnd = startX + X * (isHorizontal ? boxLength : boxHeight) * xFactor;
+    const bottomZ = startZ - Y * minorStep * zFactor;
+    const xEnd = startX + X * majorStep * xFactor;
     vertices.push(startX, 0.1, startZ, xEnd, 0.1, startZ); // 上边框
     vertices.push(startX, 0.1, bottomZ, xEnd, 0.1, bottomZ); // 下边框
     vertices.push(startX, 0.1, startZ, startX, 0.1, bottomZ); // 左边框
@@ -275,8 +297,8 @@ function drawContainerZoneGrid(zone) {
 
     // 添加箱区名称标注
     if (Name) {
-        const centerX = startX + (X * (isHorizontal ? boxLength : boxHeight) * xFactor) / 2;
-        const centerZ = startZ - (Y * (isHorizontal ? boxHeight : boxLength) * zFactor) / 2;
+        const centerX = startX + (X * majorStep * xFactor) / 2;
+        const centerZ = startZ - (Y * minorStep * zFactor) / 2;
 
         const loader = new FontLoader();
         loader.load(
@@ -324,9 +346,6 @@ function drawContainerZoneGrid(zone) {
         );
     }
 }
-
-
-
 
 
 
