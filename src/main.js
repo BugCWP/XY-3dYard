@@ -7,6 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import * as CANNON from 'cannon-es'; // 使用 cannon-es 作为物理引擎
 import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import axios from 'axios';
 
 
 
@@ -232,6 +233,9 @@ const containerSizeMap = {
     "20": { width: 9.4, height: 11, depth: 24.4, bayOffset: 1 }, // 20 尺，缩小 5%
     "40": { width: 9.4, height: 11, depth: 24.4, bayOffset: 2 }, // 40 尺，缩小 5%
 };
+axios.defaults.withCredentials = true;
+GetCompanyInfo(47, 13918691207);
+
 // 根据 JSON 绘制箱区
 // 绘制箱区的网格
 function drawContainerZoneGrid(zone, boxes) {
@@ -586,3 +590,24 @@ function createBuildingsWithPhysics(data, scene, world) {
 var BuildingZones = getJson('./testData/commonAreaData.json');
 createBuildingsWithPhysics(BuildingZones, scene, world);
 //scene.position.set(-600, 0, -500);
+
+//#region 获取数据
+async function GetCompanyInfo(companyId, loginId) {
+    try {
+
+
+        const response = await axios.post('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx?act=GetCompanyInfo&companyId=' + companyId + '&loginId=' + loginId);
+
+        console.log(response);
+
+
+    } catch (error) {
+
+
+        console.error(error);
+
+
+    }
+}
+
+//#endregion
