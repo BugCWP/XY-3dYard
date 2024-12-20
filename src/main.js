@@ -234,7 +234,10 @@ const containerSizeMap = {
     "40": { width: 9.4, height: 11, depth: 24.4, bayOffset: 2 }, // 40 尺，缩小 5%
 };
 axios.defaults.withCredentials = true;
-GetCompanyInfo(47, 13918691207);
+var AuthorizationValue;
+await GetCompanyInfo(47, 13918691207);
+await ZoneQuery();
+await ZoneGetCommonArea();
 
 // 根据 JSON 绘制箱区
 // 绘制箱区的网格
@@ -594,20 +597,86 @@ createBuildingsWithPhysics(BuildingZones, scene, world);
 //#region 获取数据
 async function GetCompanyInfo(companyId, loginId) {
     try {
+        // 发起请求
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+            params: {
+                act: 'GetCompanyInfo',
+                companyId: companyId,
+                loginId: loginId
+            },
+            withCredentials: true  // 确保请求携带 cookies
+        });
 
-
-        const response = await axios.post('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx?act=GetCompanyInfo&companyId=' + companyId + '&loginId=' + loginId);
-
-        console.log(response);
-
-
+        // 打印响应结果
+        console.log(response.data);  // 或者根据实际情况处理 response
+        AuthorizationValue = response.data.token;
     } catch (error) {
-
-
-        console.error(error);
-
-
+        console.error('请求失败:', error);
     }
 }
 
+//获取箱区信息
+async function ZoneQuery() {
+    try {
+        // 发起请求
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+            params: {
+                act: 'ZoneQuery'
+            },
+            headers: {
+                Authorization:`${AuthorizationValue}`  // 替换为实际的令牌
+            },
+            withCredentials: true  // 确保请求携带 cookies
+        });
+
+        // 打印响应结果
+        console.log(response.data);  // 或者根据实际情况处理 response
+    } catch (error) {
+        console.error('请求失败:', error);
+    }
+}
+
+
+//获取公告区域信息
+async function ZoneGetCommonArea() {
+    try {
+        // 发起请求
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+            params: {
+                act: 'ZoneGetCommonArea'
+            },
+            headers: {
+                Authorization:`${AuthorizationValue}`  // 替换为实际的令牌
+            },
+            withCredentials: true  // 确保请求携带 cookies
+        });
+
+        // 打印响应结果
+        console.log(response.data);  // 或者根据实际情况处理 response
+    } catch (error) {
+        console.error('请求失败:', error);
+    }
+}
+
+//获取箱区内箱子信息
+async function ZoneQueryContainerInZoneCell(Id) {
+    try {
+        // 发起请求
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+            params: {
+                act: 'ZoneQueryContainerInZoneCell',
+                id: Id
+            },
+            headers: {
+                Authorization:`${AuthorizationValue}`  // 替换为实际的令牌
+            },
+            withCredentials: true  // 确保请求携带 cookies
+        });
+
+        // 打印响应结果
+        console.log(response.data);  // 或者根据实际情况处理 response
+    } catch (error) {
+        console.error('请求失败:', error);
+    }
+}
 //#endregion
