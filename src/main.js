@@ -231,10 +231,12 @@ function getJson(dataName) {
 // 定义箱型尺寸映射，增加缩小比例
 const containerSizeMap = {
     "20": { width: 9.4, height: 11, depth: 24.4, bayOffset: 1 }, // 20 尺，缩小 5%
-    "40": { width: 9.4, height: 11, depth: 24.4, bayOffset: 2 }, // 40 尺，缩小 5%
+    "40": { width: 9.4, height: 11, depth: 48.8, bayOffset: 2 }, // 40 尺，缩小 5%
 };
 axios.defaults.withCredentials = true;
 var AuthorizationValue;
+var ZoneList;
+var CommonAreaList;
 await GetCompanyInfo(47, 13918691207);
 await ZoneQuery();
 await ZoneGetCommonArea();
@@ -372,12 +374,42 @@ function drawContainerZoneGrid(zone, boxes) {
         );
     }
     // 找到对应的箱区的集装箱数据
-    var findboxs = boxes.find((box) => box.AreaId === zone.Id);
-    const zoneBoxes = findboxs ? findboxs.Boxs : [];
-    zoneBoxes.forEach((box) => {
+    //区分40尺箱子与20尺箱子
+    var boxes40 = [];
+    var boxes20 = [];
+    for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].ContainerType.startsWith("20")) {
+            boxes20.push(boxes[i]);
+        } else if (boxes[i].ContainerType.startsWith("40")) {
+            boxes40.push(boxes[i]);
+        }
+    }
+    //20尺箱子生成
+    boxes20.forEach((box) => {
         const { containerMesh, body } = createContainerWithText(box, zone);
         scene.add(containerMesh); // 添加到场景
         world.addBody(body); // 添加到物理世界
+    });
+    var boxes40List = [];
+    for (var i = 0; i < boxes40.length; i++) {
+        var num = -1;
+        for (var j = 0; j < boxes40List.length; j++) {
+            if (boxes40List[j].CntrNo == boxes40[i].CntrNo) {
+                num = j;
+            }
+        }
+        if (num == -1) {
+            boxes40[i].FX = [{ X: boxes40[i].X, Y: boxes40[i].Y }]
+            boxes40List.push(boxes40[i]);
+        } else {
+            boxes40List[num].FX.push({ X: boxes40[i].X, Y: boxes40[i].Y });
+        }
+    }
+    console.log(boxes40List);
+    boxes40List.forEach((box) => {
+        createContainer40WithText(box, zone);
+        //scene.add(containerMesh); // 添加到场景
+        //world.addBody(body); // 添加到物理世界
     });
 }
 
@@ -399,42 +431,43 @@ function createContainerWithText(container, zone) {
             if (zone.YDirection == false) {
                 xPos = zone.X1 + (X - 1) * 25 + 12.5; // 贝位方向
                 yPos = (Z - 1) * height + height / 2; // 层方向
-                zPos = zone.Y1 + (Y - 1) * 10 + 5; // 排方向
+                zPos = zone.Y1 + (zone.Y - Y) * 10 + 5; // 排方向
             } else {
                 xPos = zone.X1 + (X - 1) * 25 + 12.5; // 贝位方向
                 yPos = (Z - 1) * height + height / 2; // 层方向
-                zPos = zone.Y1 + (zone.Y - Y) * 10 + 5; // 排方向
+                zPos = zone.Y1 + (Y - 1) * 10 + 5; // 排方向
             }
         } else {
             if (zone.YDirection == false) {
                 xPos = zone.X1 + (zone.X - X) * 25 + 12.5; // 贝位方向
                 yPos = (Z - 1) * height + height / 2; // 层方向
-                zPos = zone.Y1 + (Y - 1) * 10 + 5; // 排方向
+                zPos = zone.Y1 + (zone.Y - Y) * 10 + 5; // 排方向
             } else {
                 xPos = zone.X1 + (zone.X - X) * 25 + 12.5; // 贝位方向
                 yPos = (Z - 1) * height + height / 2; // 层方向
-                zPos = zone.Y1 + (zone.Y - Y) * 10 + 5; // 排方向
+                zPos = zone.Y1 + (Y - 1) * 10 + 5; // 排方向
             }
         }
     } else {
 
         if (zone.XDirection == false) {
             if (zone.YDirection == false) {
-                xPos = zone.X1 + (Y - 1) * 10 + 5; //排方向 
+                xPos = zone.X1 + (zone.Y - Y) * 10 + 5; // 排方向
                 yPos = (Z - 1) * height + height / 2; // 层方向
                 zPos = zone.Y1 + (X - 1) * 25 + 12.5; // 贝位方向
             } else {
-                xPos = zone.X1 + (zone.Y - Y) * 10 + 5; // 排方向
+                xPos = zone.X1 + (Y - 1) * 10 + 5; //排方向 
+
                 yPos = (Z - 1) * height + height / 2; // 层方向
                 zPos = zone.Y1 + (X - 1) * 25 + 12.5; // 贝位方向
             }
         } else {
             if (zone.YDirection == false) {
-                xPos = zone.X1 + (Y - 1) * 10 + 5; //排方向 
+                xPos = zone.X1 + (zone.Y - Y) * 10 + 5; // 排方向
                 yPos = (Z - 1) * height + height / 2; // 层方向
                 zPos = zone.Y1 + (zone.X - X) * 25 + 12.5; // 贝位方向
             } else {
-                xPos = zone.X1 + (zone.Y - Y) * 10 + 5; // 排方向
+                xPos = zone.X1 + (Y - 1) * 10 + 5; //排方向 
                 yPos = (Z - 1) * height + height / 2; // 层方向
                 zPos = zone.Y1 + (zone.X - X) * 25 + 12.5; // 贝位方向
             }
@@ -469,7 +502,7 @@ function createContainerWithText(container, zone) {
     containerMesh.position.set(xPos, yPos, zPos); // 设置位置
     containerMesh.rotation.y = rotationY; // 旋转角度
     // 创建物理体
-    const shape = new CANNON.Box(new CANNON.Vec3(width, height, depth));
+    const shape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
     const body = new CANNON.Body({
         mass: 0, // 设置为静态物体
         position: new CANNON.Vec3(xPos, yPos, zPos),
@@ -482,6 +515,155 @@ function createContainerWithText(container, zone) {
 
     return { containerMesh, body };
 }
+
+function createContainer40WithText(container, zone) {
+    const { X, Y, Z, ContainerType, Color, CntrNo, FX } = container;
+    for (var i = 0; i < FX.length; i++) {
+        if (X > FX[X]) {
+            X = FX[X]
+        }
+        if (Y > FX[Y]) {
+            Y = FX[Y]
+        }
+    }
+    // 定义集装箱尺寸（比标准箱位稍小）
+    const { width, height, depth } = containerSizeMap[ContainerType.substring(0, 2)] || containerSizeMap["20"];
+    let rotationY = 0; // 默认不旋转
+    let xPos;
+    let yPos;
+    let zPos;
+    // 计算集装箱在箱区内的实际位置
+    if (zone.ZoneDirection === false) {
+        rotationY = Math.PI / 2; // 旋转 90 度
+        if (zone.XDirection == false) {
+            if (zone.YDirection == false) {
+                xPos = zone.X1 + (X - 1) * 25 + 25; // 贝位方向
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (zone.Y - Y) * 10 + 5; // 排方向
+            } else {
+                xPos = zone.X1 + (X - 1) * 25 + 25; // 贝位方向
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (Y - 1) * 10 + 5; // 排方向
+            }
+        } else {
+            if (zone.YDirection == false) {
+                xPos = zone.X1 + (zone.X - X) * 25; // 贝位方向
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (zone.Y - Y) * 10 + 5; // 排方向
+            } else {
+                xPos = zone.X1 + (zone.X - X) * 25; // 贝位方向
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (Y - 1) * 10 + 5; // 排方向
+            }
+        }
+    } else {
+
+        if (zone.XDirection == false) {
+            if (zone.YDirection == false) {
+                xPos = zone.X1 + (zone.Y - Y) * 10 + 5; // 排方向
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (X - 1) * 25 + 25; // 贝位方向
+            } else {
+                xPos = zone.X1 + (Y - 1) * 10 + 5; //排方向 
+
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (X - 1) * 25 + 25; // 贝位方向
+            }
+        } else {
+            if (zone.YDirection == false) {
+                xPos = zone.X1 + (zone.Y - Y) * 10 + 5; // 排方向
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (zone.X - X) * 25; // 贝位方向
+            } else {
+                xPos = zone.X1 + (Y - 1) * 10 + 5; //排方向 
+                yPos = (Z - 1) * height + height / 2; // 层方向
+                zPos = zone.Y1 + (zone.X - X) * 25; // 贝位方向
+            }
+        }
+    }
+
+
+
+    //     // 创建几何体
+    //     const geometry = new THREE.BoxGeometry(width, height, depth);
+
+    //     // 创建默认材质
+    //     const defaultMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(Color) });
+
+    //     // 创建带文字的材质
+    //     const textMaterial = createTextMaterial(CntrNo, Color);
+
+    //     // 为每一面指定材质，长边（前后面）显示编号，其他面为默认颜色
+    //     const materials = [
+    //         textMaterial, // 前面（长的一面，带文字）
+    //         textMaterial, // 后面（长的一面，带文字）
+    //         defaultMaterial, // 顶部
+    //         defaultMaterial, // 底部
+    //         defaultMaterial, // 侧面（短的一面）
+    //         defaultMaterial, // 侧面（短的一面）
+    //     ];
+
+    //     // 创建网格对象
+    //     const containerMesh = new THREE.Mesh(geometry, materials);
+
+    //     // 设置集装箱的位置
+    //     containerMesh.position.set(xPos, yPos, zPos); // 设置位置
+    //     containerMesh.rotation.y = rotationY; // 旋转角度
+    //     // 创建物理体
+    //     const shape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
+    //     const body = new CANNON.Body({
+    //         mass: 0, // 设置为静态物体
+    //         position: new CANNON.Vec3(xPos, yPos, zPos),
+    //         shape: shape,
+    //     });
+    //     body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY); // 设置旋转
+
+    //     // 在每一帧中同步物理体与 Three.js 网格的旋转
+    //     containerMesh.userData = { body: body };
+
+    //     return { containerMesh, body };
+    // 创建 OBJLoader
+    const objLoader = new OBJLoader();
+
+    // 加载模型
+    objLoader.load('/3dmodel/40box.obj', function(object) {
+        // 获取模型的边界框
+        const bbox = new THREE.Box3().setFromObject(object);
+        const modelWidth = bbox.max.x - bbox.min.x;
+        const modelHeight = bbox.max.y - bbox.min.y;
+        const modelDepth = bbox.max.z - bbox.min.z;
+
+        // 计算缩放比例以匹配容器尺寸
+        const scaleX = width / modelWidth;
+        const scaleY = height / modelHeight;
+        const scaleZ = depth / modelDepth;
+        object.scale.set(scaleX, scaleY, scaleZ);
+
+        // 设置模型的位置和旋转
+        object.position.set(xPos, yPos, zPos);
+        object.rotation.y = rotationY;
+
+        // 将模型添加到场景
+        scene.add(object);
+
+        // 创建物理体
+        const shape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
+        const body = new CANNON.Body({
+            mass: 0, // 设置为静态物体
+            position: new CANNON.Vec3(xPos, yPos, zPos),
+            shape: shape,
+        });
+        body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY); // 设置旋转
+
+        // 在每一帧中同步物理体与 Three.js 网格的旋转
+        object.userData = { body: body };
+        world.addBody(body);
+    });
+
+    // return { containerMesh: null, body: null }; // 现在返回 null，因为我们不再使用 BoxGeometry
+
+}
+
 
 // 创建叠加文字的材质
 function createTextMaterial(text, baseColor) {
@@ -507,6 +689,8 @@ function createTextMaterial(text, baseColor) {
 
     // 返回材质
     return new THREE.MeshBasicMaterial({ map: texture });
+
+
 }
 
 
@@ -517,13 +701,34 @@ function createTextMaterial(text, baseColor) {
 
 const axesHelper = new THREE.AxesHelper(50);
 scene.add(axesHelper);
-var boxZones = getJson('./testData/boxsData.json');
-// 遍历所有箱区并绘制
-var containerZones = getJson('./testData/boxAreaData.json');
-for (var i = 0; i < containerZones.rows.length; i++) {
-    drawContainerZoneGrid(containerZones.rows[i], boxZones);
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms)); // 返回一个在指定毫秒后 resolve 的 Promise
 }
 
+
+
+//var boxZones = getJson('./testData/boxsData.json');
+// 遍历所有箱区并绘制
+//var containerZones = getJson('./testData/boxAreaData.json');
+async function processZones() {
+    for (var i = 0; i < ZoneList.rows.length; i++) {
+        await delay(100); // 延迟 1000 毫秒（1秒）
+        // 发起异步请求
+        var boxZones = await ZoneQueryContainerInZoneCell(ZoneList.rows[i].Id);
+
+        // 绘制容器网格
+        drawContainerZoneGrid(ZoneList.rows[i], boxZones);
+
+        // 每次循环等待 1 秒钟
+
+    }
+}
+processZones();
+// for (var i = 0; i < ZoneList.rows.length; i++) {
+//     var boxZones = await ZoneQueryContainerInZoneCell(ZoneList.rows[i].Id);
+//     drawContainerZoneGrid(ZoneList.rows[i], boxZones);
+// }
 
 
 
@@ -543,7 +748,9 @@ function createBuildingsWithPhysics(data, scene, world) {
 
         // 创建材质
         const material = new THREE.MeshLambertMaterial({
-            color: new THREE.Color(building.Color) // 使用 JSON 中的颜色
+            color: new THREE.Color(building.Color), // 使用 JSON 中的颜色
+            opacity: 0.7,
+            transparent: true
         });
 
         // 创建网格
@@ -564,11 +771,17 @@ function createBuildingsWithPhysics(data, scene, world) {
                 function(font) {
                     const textGeometry = new TextGeometry(building.Name, {
                         font: font,
-                        size: 8, // 字体大小
+                        size: 10, // 字体大小
                         height: 0.5, // 厚度
                     });
+                    // 获取文本的边界框，用于居中
+                    textGeometry.computeBoundingBox();
+                    const textWidth = textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x;
 
-                    const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                    const textMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xffffff,
+                        transparent: false // 确保材质不透明
+                    });
                     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
 
                     // 将名称放置到建筑物顶部
@@ -590,25 +803,25 @@ function createBuildingsWithPhysics(data, scene, world) {
     });
 }
 // 遍历所有箱区并绘制
-var BuildingZones = getJson('./testData/commonAreaData.json');
-createBuildingsWithPhysics(BuildingZones, scene, world);
+//var BuildingZones = getJson('./testData/commonAreaData.json');
+createBuildingsWithPhysics(CommonAreaList, scene, world);
 //scene.position.set(-600, 0, -500);
 
 //#region 获取数据
 async function GetCompanyInfo(companyId, loginId) {
     try {
         // 发起请求
-        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'GetCompanyInfo',
                 companyId: companyId,
                 loginId: loginId
             },
-            withCredentials: true  // 确保请求携带 cookies
+            withCredentials: true // 确保请求携带 cookies
         });
 
         // 打印响应结果
-        console.log(response.data);  // 或者根据实际情况处理 response
+        console.log(response.data); // 或者根据实际情况处理 response
         AuthorizationValue = response.data.token;
     } catch (error) {
         console.error('请求失败:', error);
@@ -619,40 +832,42 @@ async function GetCompanyInfo(companyId, loginId) {
 async function ZoneQuery() {
     try {
         // 发起请求
-        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'ZoneQuery'
             },
             headers: {
-                Authorization:`${AuthorizationValue}`  // 替换为实际的令牌
+                Authorization: `${AuthorizationValue}` // 替换为实际的令牌
             },
-            withCredentials: true  // 确保请求携带 cookies
+            withCredentials: true // 确保请求携带 cookies
         });
 
         // 打印响应结果
-        console.log(response.data);  // 或者根据实际情况处理 response
+        console.log(response.data); // 或者根据实际情况处理 response
+        ZoneList = response.data;
     } catch (error) {
         console.error('请求失败:', error);
     }
 }
 
 
-//获取公告区域信息
+//获取公共区域信息
 async function ZoneGetCommonArea() {
     try {
         // 发起请求
-        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'ZoneGetCommonArea'
             },
             headers: {
-                Authorization:`${AuthorizationValue}`  // 替换为实际的令牌
+                Authorization: `${AuthorizationValue}` // 替换为实际的令牌
             },
-            withCredentials: true  // 确保请求携带 cookies
+            withCredentials: true // 确保请求携带 cookies
         });
 
         // 打印响应结果
-        console.log(response.data);  // 或者根据实际情况处理 response
+        console.log(response.data); // 或者根据实际情况处理 response
+        CommonAreaList = response.data;
     } catch (error) {
         console.error('请求失败:', error);
     }
@@ -662,19 +877,20 @@ async function ZoneGetCommonArea() {
 async function ZoneQueryContainerInZoneCell(Id) {
     try {
         // 发起请求
-        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'ZoneQueryContainerInZoneCell',
                 id: Id
             },
             headers: {
-                Authorization:`${AuthorizationValue}`  // 替换为实际的令牌
+                Authorization: `${AuthorizationValue}` // 替换为实际的令牌
             },
-            withCredentials: true  // 确保请求携带 cookies
+            withCredentials: true // 确保请求携带 cookies
         });
 
         // 打印响应结果
-        console.log(response.data);  // 或者根据实际情况处理 response
+        console.log(response.data); // 或者根据实际情况处理 response
+        return response.data;
     } catch (error) {
         console.error('请求失败:', error);
     }
