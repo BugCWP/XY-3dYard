@@ -569,7 +569,7 @@ function getModel(modelName, callback) {
     } else {
         // 如果模型没有加载过，从服务器加载
         const objLoader = new OBJLoader();
-        objLoader.load('/3dmodel/' + modelName + '.obj', function(object) {
+        objLoader.load('./3dmodel/' + modelName + '.obj', function(object) {
             modelCache[modelName] = object; // 缓存模型
             callback(object.clone()); // 返回一个克隆对象，避免多次引用同一实例
         });
@@ -598,7 +598,7 @@ function loadFontOnce(callback) {
 const CntrNotextMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
 function createContainer40WithText(container, zone) {
-    const { X, Y, Z, ContainerType, Color, CntrNo, FX } = container;
+    var { X, Y, Z, ContainerType, Color, CntrNo, FX } = container;
     for (var i = 0; i < FX.length; i++) {
         if (X > FX[X]) {
             X = FX[X]
