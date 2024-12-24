@@ -32,7 +32,7 @@ globalCamera.updateProjectionMatrix();
 let activeCamera = firstPersonCamera;
 
 // 初始化渲染器
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -70,8 +70,8 @@ orbitControls.enableDamping = false; // 启用惯性效果
 orbitControls.dampingFactor = 0.05;
 orbitControls.screenSpacePanning = true; // 启用平移
 orbitControls.enableZoom = true; // 启用缩放
-orbitControls.minDistance = 100; // 最小缩放距离
-orbitControls.maxDistance = 1200; // 限制最大缩放距离，确保视角不会太远
+orbitControls.minDistance = 50; // 最小缩放距离
+orbitControls.maxDistance = 1500; // 限制最大缩放距离，确保视角不会太远
 
 // 初始化物理世界
 const world = new CANNON.World();
@@ -197,28 +197,6 @@ window.addEventListener('resize', () => {
 animate();
 
 
-//加载 .glb 文件
-// const loader = new GLTFLoader();
-// loader.load(
-//     './3dmodel/box2.glb', // 替换为你的 .glb 文件路径
-//     (gltf) => {
-//         const model = gltf.scene;
-//         model.scale.set(0.1, 0.1, 0.1); // 设置模型大小
-//         model.position.set(1, 1, 0); // 设置模型位置
-//         scene.add(model);
-//     },
-//     (xhr) => {
-//         // 加载进度
-//         console.log(`模型加载进度: ${(xhr.loaded / xhr.total) * 100}%`);
-//     },
-//     (error) => {
-//         // 加载失败
-//         console.error('模型加载失败', error);
-//     }
-
-// );
-
-
 /**
  * json文件读取
  */
@@ -237,7 +215,21 @@ axios.defaults.withCredentials = true;
 var AuthorizationValue;
 var ZoneList;
 var CommonAreaList;
-await GetCompanyInfo(47, 13918691207);
+var companyId = 47;
+var loginId = 13918691207;
+if (getQueryParam('companyId') != null) {
+    companyId = getQueryParam('companyId');
+}
+if (getQueryParam('loginId') != null) {
+    loginId = getQueryParam('loginId');
+}
+
+
+function getQueryParam(paramName) {
+    const url = new URL(window.location.href); // 获取当前页面的 URL
+    return url.searchParams.get(paramName); // 获取指定参数的值
+}
+await GetCompanyInfo(companyId, loginId);
 await ZoneQuery();
 await ZoneGetCommonArea();
 
@@ -250,7 +242,11 @@ function drawContainerZoneGrid(zone, boxes) {
     const boxHeight = 10; // 排位的短边（箱位的高度）
     const gridColor = new THREE.Color(Color || 0xFFFFFF); // 网格颜色
 
-    const lineMaterial = new THREE.LineBasicMaterial({ color: gridColor });
+    const lineMaterial = new THREE.LineBasicMaterial({
+        color: gridColor,
+        opacity: 0.2, // 设置透明度（0是完全透明，1是完全不透明）
+        transparent: true // 使透明度生效
+    });
     const lineGeometry = new THREE.BufferGeometry();
     const vertices = [];
 
@@ -386,9 +382,7 @@ function drawContainerZoneGrid(zone, boxes) {
     }
     //20尺箱子生成
     boxes20.forEach((box) => {
-        const { containerMesh, body } = createContainerWithText(box, zone);
-        scene.add(containerMesh); // 添加到场景
-        world.addBody(body); // 添加到物理世界
+        createContainerWithText(box, zone);
     });
     var boxes40List = [];
     for (var i = 0; i < boxes40.length; i++) {
@@ -405,7 +399,7 @@ function drawContainerZoneGrid(zone, boxes) {
             boxes40List[num].FX.push({ X: boxes40[i].X, Y: boxes40[i].Y });
         }
     }
-    console.log(boxes40List);
+    //console.log(boxes40List);
     boxes40List.forEach((box) => {
         createContainer40WithText(box, zone);
         //scene.add(containerMesh); // 添加到场景
@@ -475,46 +469,133 @@ function createContainerWithText(container, zone) {
     }
 
 
+    // 加载模型
+    getModel('40box', function(object) {
 
-    // 创建几何体
-    const geometry = new THREE.BoxGeometry(width, height, depth);
 
-    // 创建默认材质
-    const defaultMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(Color) });
+        // 获取模型的边界框
+        const bbox = new THREE.Box3().setFromObject(object);
+        const scaleX = width / (bbox.max.x - bbox.min.x);
+        const scaleY = height / (bbox.max.y - bbox.min.y);
+        const scaleZ = depth / (bbox.max.z - bbox.min.z);
+        object.scale.set(scaleX, scaleY, scaleZ);
 
-    // 创建带文字的材质
-    const textMaterial = createTextMaterial(CntrNo, Color);
 
-    // 为每一面指定材质，长边（前后面）显示编号，其他面为默认颜色
-    const materials = [
-        textMaterial, // 前面（长的一面，带文字）
-        textMaterial, // 后面（长的一面，带文字）
-        defaultMaterial, // 顶部
-        defaultMaterial, // 底部
-        defaultMaterial, // 侧面（短的一面）
-        defaultMaterial, // 侧面（短的一面）
-    ];
+        // 调整模型的底部与地面对齐
+        const bottomOffset = bbox.min.y * scaleY; // 底部偏移量
+        const adjustedYPos = yPos - bottomOffset - 5.5; // 修正后的 Y 轴位置
+        object.position.set(xPos, adjustedYPos, zPos);
+        object.rotation.y = rotationY;
 
-    // 创建网格对象
-    const containerMesh = new THREE.Mesh(geometry, materials);
+        // 设置模型颜色
+        object.traverse((child) => {
+            if (child.isMesh) {
+                if (child.name.includes('LBR')) {
+                    // 设置该子组件的材质颜色为红色
+                    child.material.color.set(0xc6b7a4); // 红色
+                } else {
+                    child.material = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color(Color || '#ffffff'), // 取 `Color` 的值，默认白色
+                    });
+                }
 
-    // 设置集装箱的位置
-    containerMesh.position.set(xPos, yPos, zPos); // 设置位置
-    containerMesh.rotation.y = rotationY; // 旋转角度
-    // 创建物理体
-    const shape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
-    const body = new CANNON.Body({
-        mass: 0, // 设置为静态物体
-        position: new CANNON.Vec3(xPos, yPos, zPos),
-        shape: shape,
+            }
+        });
+
+        // 将模型添加到场景
+        scene.add(object);
+
+        // 创建物理体
+        const shape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
+        const body = new CANNON.Body({
+            mass: 0, // 设置为静态物体
+            position: new CANNON.Vec3(xPos, adjustedYPos, zPos),
+            shape: shape,
+        });
+        body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY); // 设置旋转
+
+        // 在每一帧中同步物理体与 Three.js 网格的旋转
+        object.userData = { body: body };
+        world.addBody(body);
+
+        // 创建并显示箱号
+        loadFontOnce(function(font) {
+            const textGeometry = new TextGeometry(CntrNo, {
+                font: font,
+                size: 3, // 字体大小
+                height: 0.1, // 厚度
+            });
+
+            const textMesh = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+
+            // 计算文本的放置位置，使其贴在集装箱的两个长面
+            const offsetX = (width / 2) + 1; // 稍微偏移，确保文字不与箱子重叠
+
+            if (zone.ZoneDirection) {
+                // 左侧面
+                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2, zPos - 12); // 左侧面
+                textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMesh);
+
+                // 右侧面
+                const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2, zPos + 12); // 右侧面
+                textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMeshRight);
+            } else {
+                // 左侧面
+                textMesh.position.set(xPos - offsetX + 17, adjustedYPos + height / 2, zPos - 5); // 左侧面
+                textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMesh);
+
+                // 右侧面
+                const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+                textMeshRight.position.set(xPos + offsetX - 17, adjustedYPos + height / 2, zPos + 5); // 右侧面
+                textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMeshRight);
+            }
+
+        });
     });
-    body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY); // 设置旋转
-
-    // 在每一帧中同步物理体与 Three.js 网格的旋转
-    containerMesh.userData = { body: body };
-
-    return { containerMesh, body };
 }
+
+
+
+const modelCache = {}; // 用于缓存已经加载的模型
+function getModel(modelName, callback) {
+    if (modelCache[modelName]) {
+        // 如果模型已经加载过，直接使用缓存
+        callback(modelCache[modelName].clone());
+    } else {
+        // 如果模型没有加载过，从服务器加载
+        const objLoader = new OBJLoader();
+        objLoader.load('/3dmodel/' + modelName + '.obj', function(object) {
+            modelCache[modelName] = object; // 缓存模型
+            callback(object.clone()); // 返回一个克隆对象，避免多次引用同一实例
+        });
+    }
+}
+
+// 缓存字体对象
+let cachedFont = null;
+
+// 加载字体并缓存
+function loadFontOnce(callback) {
+    if (cachedFont) {
+        // 如果字体已经加载过，直接使用缓存的字体
+        callback(cachedFont);
+        return;
+    }
+
+    const loader = new FontLoader();
+    loader.load('./src/font/FangSong_Regular.json', function(font) {
+        cachedFont = font; // 缓存字体
+        callback(font); // 使用加载的字体执行回调
+    });
+}
+
+// 创建一个缓存对象来存储已生成的文本纹理
+const CntrNotextMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
 function createContainer40WithText(container, zone) {
     const { X, Y, Z, ContainerType, Color, CntrNo, FX } = container;
@@ -557,7 +638,6 @@ function createContainer40WithText(container, zone) {
             }
         }
     } else {
-
         if (zone.XDirection == false) {
             if (zone.YDirection == false) {
                 xPos = zone.X1 + (zone.Y - Y) * 10 + 5; // 排方向
@@ -582,67 +662,40 @@ function createContainer40WithText(container, zone) {
         }
     }
 
-
-
-    //     // 创建几何体
-    //     const geometry = new THREE.BoxGeometry(width, height, depth);
-
-    //     // 创建默认材质
-    //     const defaultMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(Color) });
-
-    //     // 创建带文字的材质
-    //     const textMaterial = createTextMaterial(CntrNo, Color);
-
-    //     // 为每一面指定材质，长边（前后面）显示编号，其他面为默认颜色
-    //     const materials = [
-    //         textMaterial, // 前面（长的一面，带文字）
-    //         textMaterial, // 后面（长的一面，带文字）
-    //         defaultMaterial, // 顶部
-    //         defaultMaterial, // 底部
-    //         defaultMaterial, // 侧面（短的一面）
-    //         defaultMaterial, // 侧面（短的一面）
-    //     ];
-
-    //     // 创建网格对象
-    //     const containerMesh = new THREE.Mesh(geometry, materials);
-
-    //     // 设置集装箱的位置
-    //     containerMesh.position.set(xPos, yPos, zPos); // 设置位置
-    //     containerMesh.rotation.y = rotationY; // 旋转角度
-    //     // 创建物理体
-    //     const shape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
-    //     const body = new CANNON.Body({
-    //         mass: 0, // 设置为静态物体
-    //         position: new CANNON.Vec3(xPos, yPos, zPos),
-    //         shape: shape,
-    //     });
-    //     body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY); // 设置旋转
-
-    //     // 在每一帧中同步物理体与 Three.js 网格的旋转
-    //     containerMesh.userData = { body: body };
-
-    //     return { containerMesh, body };
-    // 创建 OBJLoader
-    const objLoader = new OBJLoader();
-
     // 加载模型
-    objLoader.load('/3dmodel/40box.obj', function(object) {
+    getModel('40box', function(object) {
+
+
         // 获取模型的边界框
         const bbox = new THREE.Box3().setFromObject(object);
-        const modelWidth = bbox.max.x - bbox.min.x;
-        const modelHeight = bbox.max.y - bbox.min.y;
-        const modelDepth = bbox.max.z - bbox.min.z;
-
-        // 计算缩放比例以匹配容器尺寸
-        const scaleX = width / modelWidth;
-        const scaleY = height / modelHeight;
-        const scaleZ = depth / modelDepth;
+        const scaleX = width / (bbox.max.x - bbox.min.x);
+        const scaleY = height / (bbox.max.y - bbox.min.y);
+        const scaleZ = depth / (bbox.max.z - bbox.min.z);
         object.scale.set(scaleX, scaleY, scaleZ);
 
-        // 设置模型的位置和旋转
-        object.position.set(xPos, yPos, zPos);
+
+        // 调整模型的底部与地面对齐
+        const bottomOffset = bbox.min.y * scaleY; // 底部偏移量
+        const adjustedYPos = yPos - bottomOffset - 5.5; // 修正后的 Y 轴位置
+        object.position.set(xPos, adjustedYPos, zPos);
         object.rotation.y = rotationY;
 
+
+        // 设置模型颜色
+        object.traverse((child) => {
+            if (child.isMesh) {
+
+                if (child.name.includes('LBR')) {
+                    // 设置该子组件的材质颜色为红色
+                    child.material.color.set(0xc6b7a4); // 红色
+                } else {
+                    child.material = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color(Color || '#ffffff'), // 取 `Color` 的值，默认白色
+                    });
+                }
+
+            }
+        });
         // 将模型添加到场景
         scene.add(object);
 
@@ -650,7 +703,7 @@ function createContainer40WithText(container, zone) {
         const shape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2));
         const body = new CANNON.Body({
             mass: 0, // 设置为静态物体
-            position: new CANNON.Vec3(xPos, yPos, zPos),
+            position: new CANNON.Vec3(xPos, adjustedYPos, zPos),
             shape: shape,
         });
         body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY); // 设置旋转
@@ -658,10 +711,46 @@ function createContainer40WithText(container, zone) {
         // 在每一帧中同步物理体与 Three.js 网格的旋转
         object.userData = { body: body };
         world.addBody(body);
+
+        // 创建并显示箱号
+        loadFontOnce(function(font) {
+            const textGeometry = new TextGeometry(CntrNo, {
+                font: font,
+                size: 3, // 字体大小
+                height: 0.1, // 厚度
+            });
+
+            const textMesh = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+
+            // 计算文本的放置位置，使其贴在集装箱的两个长面
+            const offsetX = (width / 2) + 1; // 稍微偏移，确保文字不与箱子重叠
+
+            if (zone.ZoneDirection) {
+                // 左侧面
+                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2, zPos - 10); // 左侧面
+                textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMesh);
+
+                // 右侧面
+                const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2, zPos + 10); // 右侧面
+                textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMeshRight);
+            } else {
+                // 左侧面
+                textMesh.position.set(xPos - offsetX + 18, adjustedYPos + height / 2, zPos - 5); // 左侧面
+                textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMesh);
+
+                // 右侧面
+                const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+                textMeshRight.position.set(xPos + offsetX - 18, adjustedYPos + height / 2, zPos + 5); // 右侧面
+                textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+                scene.add(textMeshRight);
+            }
+
+        });
     });
-
-    // return { containerMesh: null, body: null }; // 现在返回 null，因为我们不再使用 BoxGeometry
-
 }
 
 
@@ -811,7 +900,7 @@ createBuildingsWithPhysics(CommonAreaList, scene, world);
 async function GetCompanyInfo(companyId, loginId) {
     try {
         // 发起请求
-        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'GetCompanyInfo',
                 companyId: companyId,
@@ -821,7 +910,7 @@ async function GetCompanyInfo(companyId, loginId) {
         });
 
         // 打印响应结果
-        console.log(response.data); // 或者根据实际情况处理 response
+        //console.log(response.data); // 或者根据实际情况处理 response
         AuthorizationValue = response.data.token;
     } catch (error) {
         console.error('请求失败:', error);
@@ -832,7 +921,7 @@ async function GetCompanyInfo(companyId, loginId) {
 async function ZoneQuery() {
     try {
         // 发起请求
-        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'ZoneQuery'
             },
@@ -843,7 +932,7 @@ async function ZoneQuery() {
         });
 
         // 打印响应结果
-        console.log(response.data); // 或者根据实际情况处理 response
+        //console.log(response.data); // 或者根据实际情况处理 response
         ZoneList = response.data;
     } catch (error) {
         console.error('请求失败:', error);
@@ -855,7 +944,7 @@ async function ZoneQuery() {
 async function ZoneGetCommonArea() {
     try {
         // 发起请求
-        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'ZoneGetCommonArea'
             },
@@ -866,7 +955,7 @@ async function ZoneGetCommonArea() {
         });
 
         // 打印响应结果
-        console.log(response.data); // 或者根据实际情况处理 response
+        //console.log(response.data); // 或者根据实际情况处理 response
         CommonAreaList = response.data;
     } catch (error) {
         console.error('请求失败:', error);
@@ -877,7 +966,7 @@ async function ZoneGetCommonArea() {
 async function ZoneQueryContainerInZoneCell(Id) {
     try {
         // 发起请求
-        const response = await axios.get('https://user.xiang-cloud.com/Api/Backend/YAD/YardDashboard.ashx', {
+        const response = await axios.get('/Api/Backend/YAD/YardDashboard.ashx', {
             params: {
                 act: 'ZoneQueryContainerInZoneCell',
                 id: Id
@@ -889,7 +978,7 @@ async function ZoneQueryContainerInZoneCell(Id) {
         });
 
         // 打印响应结果
-        console.log(response.data); // 或者根据实际情况处理 response
+        //console.log(response.data); // 或者根据实际情况处理 response
         return response.data;
     } catch (error) {
         console.error('请求失败:', error);
