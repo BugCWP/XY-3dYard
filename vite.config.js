@@ -1,5 +1,11 @@
 // vite.config.js
 export default {
+    build: {
+        target: 'esnext', // 使用 esnext 目标，支持顶级 await
+        esbuild: {
+            target: 'esnext', // 同样设置 esbuild 目标为 esnext
+        }
+    },
     server: {
         proxy: {
             '/Api/Backend': {

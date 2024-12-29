@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="'en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+  <script type="module" crossorigin src="/assets/index-KfBlC344.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DSXqzjBm.css">
+</head>
+<script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon/0.6.2/cannon.min.js"></script>
+<style>
+    /* 通用输入框和按钮的样式 */
+    
+    input,
+    select,
+    button {
+        padding: 8px 15px;
+        font-size: 16px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    /* 输入框样式 */
+    
+    #boxNumber {
+        border: 2px solid #ccc;
+        width: 180px;
+        background-color: #f8f8f8;
+    }
+    /* 下拉框样式 */
+    
+    #cameraSelect {
+        border: 2px solid #ccc;
+        background-color: #f8f8f8;
+        width: 360px;
+        font-size: 16px;
+    }
+    /* 搜索按钮样式 */
+    
+    #searchBtn {
+        background-color: #66afe9;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    /* 取消按钮样式 */
+    
+    #cancelBtn {
+        background-color: #f44336;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    /* 容器布局 */
+    
+    .container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .button-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    /* 鼠标悬停时的效果 */
+    
+    input:hover,
+    select:hover,
+    button:hover {
+        border-color: #66afe9;
+    }
+    /* 聚焦时的效果 */
+    
+    input:focus,
+    select:focus,
+    button:focus {
+        border-color: #66afe9;
+        outline: none;
+    }
+</style>
+
+<body>
+    <div style="position:fixed;padding: 20px;background-color: white;border-radius: 5px;right: 2%;top: 2%;">
+        <div>
+            <div style="display: inline-block;">视角切换：</div>
+            <div style="display: inline-block;">
+                <select id="cameraSelect">
+                    <option value="firstPersonCamera">第一人称视角</option>
+                    <option value="globalCamera">第三人称视角</option>
+                </select>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;margin-top: 20px;">
+            <div>箱号搜索：</div>
+            <div class="button-container">
+                <!-- 输入框 -->
+                <input type="text" id="boxNumber" placeholder="请输入箱号">
+                <!-- 搜索按钮 -->
+                <button id="searchBtn">搜索</button>
+                <!-- 取消按钮 -->
+                <button id="cancelBtn">取消</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
