@@ -48,7 +48,7 @@ scene.add(directionalLight);
 
 // 加载 HDR 文件
 const rgbeLoader = new RGBELoader();
-rgbeLoader.load('./public/textures/sunflowers_puresky_4k.hdr', (texture) => {
+rgbeLoader.load('/textures/sunflowers_puresky_4k.hdr', (texture) => {
     // 设置纹理的映射方式
     texture.mapping = THREE.EquirectangularReflectionMapping;
 
@@ -61,7 +61,7 @@ rgbeLoader.load('./public/textures/sunflowers_puresky_4k.hdr', (texture) => {
 
 // 加载纹理
 const textureLoader = new THREE.TextureLoader();
-const groundTexture = textureLoader.load('./public/textures/4K-concrete_41.jpg-diffuse.jpg');
+const groundTexture = textureLoader.load('/textures/4K-concrete_41.jpg-diffuse.jpg');
 // 设置纹理的平铺模式
 groundTexture.wrapS = THREE.RepeatWrapping; // 水平方向重复
 groundTexture.wrapT = THREE.RepeatWrapping; // 垂直方向重复
@@ -606,14 +606,14 @@ function getModel(modelName, callback) {
         const mtlLoader = new MTLLoader(); // 创建 MTLLoader 实例
         const objLoader = new OBJLoader();
         // 加载 MTL 文件
-        mtlLoader.load('./public/3dmodel/' + modelName + '.mtl', function(materials) {
+        mtlLoader.load('/3dmodel/' + modelName + '.mtl', function(materials) {
             materials.preload(); // 预加载材质
 
             // 设置 OBJLoader 使用加载的材质
             objLoader.setMaterials(materials);
 
             // 加载 OBJ 文件
-            objLoader.load('./public/3dmodel/' + modelName + '.obj', function(object) {
+            objLoader.load('/3dmodel/' + modelName + '.obj', function(object) {
                 // 为每个子网格设置金属材质和反光效果
                 object.traverse(function(child) {
                     if (child.isMesh) {
@@ -646,7 +646,7 @@ function loadFontOnce(callback) {
     }
 
     const loader = new FontLoader();
-    loader.load('./public/font/FangSong_Regular.json', function(font) {
+    loader.load('/font/FangSong_Regular.json', function(font) {
         cachedFont = font; // 缓存字体
         callback(font); // 使用加载的字体执行回调
     });
