@@ -1,3 +1,4 @@
+import Stats from 'stats.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
@@ -9,6 +10,7 @@ import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import axios from 'axios';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+
 
 
 
@@ -33,9 +35,11 @@ globalCamera.updateProjectionMatrix();
 let activeCamera = globalCamera;
 
 // 初始化渲染器
-const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+//const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 0);
+renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 // 添加光照
@@ -48,7 +52,7 @@ scene.add(directionalLight);
 
 // 加载 HDR 文件
 const rgbeLoader = new RGBELoader();
-rgbeLoader.load('/textures/sunflowers_puresky_4k.hdr', (texture) => {
+rgbeLoader.load('/textures/sunflowers_puresky_1k.hdr', (texture) => {
     // 设置纹理的映射方式
     texture.mapping = THREE.EquirectangularReflectionMapping;
 
@@ -61,11 +65,14 @@ rgbeLoader.load('/textures/sunflowers_puresky_4k.hdr', (texture) => {
 
 // 加载纹理
 const textureLoader = new THREE.TextureLoader();
-const groundTexture = textureLoader.load('/textures/4K-concrete_41.jpg-diffuse.jpg');
+const groundTexture = textureLoader.load('/textures/gravel_concrete_03_diff_1k.jpg', () => {
+    // 确保纹理加载后启用Mipmap
+    groundTexture.minFilter = THREE.LinearMipmapLinearFilter;
+  });
 // 设置纹理的平铺模式
 groundTexture.wrapS = THREE.RepeatWrapping; // 水平方向重复
 groundTexture.wrapT = THREE.RepeatWrapping; // 垂直方向重复
-groundTexture.repeat.set(500, 500); // 设置纹理的平铺次数（10x10）
+groundTexture.repeat.set(50, 50); // 设置纹理的平铺次数（10x10）
 
 // 地面：左上角为 (0, 0, 0)
 const groundSize = 1000; // 增大地面大小
@@ -175,10 +182,29 @@ cameraSelect.addEventListener('change', (event) => {
         controls.unlock(); // 解锁鼠标，退出第一人称控制
     }
 });
+// 创建 FPS、MS、Memory 三个 Stats 实例
+const stats1 = new Stats();
+const stats2 = new Stats();
+const stats3 = new Stats();
 
+// 设置每个 Stats 实例的显示类型
+stats1.setMode(0); // 0 = FPS, 1 = MS
+stats2.setMode(1); // 渲染时间 (MS)
+stats3.setMode(2); // 内存使用情况
+stats1.dom.id = 'stats1';
+stats2.dom.id = 'stats2';
+stats3.dom.id = 'stats3';
+// 将它们添加到 DOM 中
+document.body.appendChild(stats1.dom);
+document.body.appendChild(stats2.dom);
+document.body.appendChild(stats3.dom);
+stats1.dom.style.top = '10px';
+stats2.dom.style.top = '60px';
+stats3.dom.style.top = '110px';
 // 动画循环
 function animate() {
-    requestAnimationFrame(animate);
+
+
 
     // 更新物理世界
     // 更新物理世界（增大步长精度）
@@ -216,7 +242,14 @@ function animate() {
     }
 
     // 渲染场景
+    stats1.begin();
+    stats2.begin();
+    stats3.begin();
     renderer.render(scene, activeCamera);
+    stats1.end();
+    stats2.end();
+    stats3.end();
+    requestAnimationFrame(animate);
 }
 
 // 调整窗口大小
@@ -234,15 +267,6 @@ window.addEventListener('resize', () => {
 animate();
 
 
-/**
- * json文件读取
- */
-function getJson(dataName) {
-    $.ajaxSettings.async = false; //设为同步请求
-    var data = $.getJSON(dataName);
-    $.ajaxSettings.async = true; //设为异步请求
-    return data.responseJSON;
-}
 // 定义箱型尺寸映射，增加缩小比例
 const containerSizeMap = {
     "20": { width: 9.4, height: 11, depth: 24.4, bayOffset: 1 }, // 20 尺，缩小 5%
@@ -269,6 +293,17 @@ function getQueryParam(paramName) {
 await GetCompanyInfo(companyId, loginId);
 await ZoneQuery();
 await ZoneGetCommonArea();
+
+//#region 箱区字体设置
+
+const boxAreaFonttextMaterial = new THREE.MeshBasicMaterial({ color: 0xbb0800 });
+
+
+const boxAreaFontoutlineMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    side: THREE.BackSide, // 白色描边
+});
+//#endregion
 
 // 根据 JSON 绘制箱区
 // 绘制箱区的网格
@@ -362,26 +397,18 @@ function drawContainerZoneGrid(zone, boxes) {
 
 
         loadFontOnce(function(font) {
-                const textGeometry = new TextGeometry(Name, {
-                    font: font,
-                    size: 10, // 字体大小
-                    height: 0.1, // 文字厚度
-                });
-
-                const textMaterial = new THREE.MeshBasicMaterial({ color: 0xbb0800 });
-                const outlineGeometry = new TextGeometry(Name, {
-                    font: font,
-                    size: 10,
-                    height: 0.1,
-                });
-
-                const outlineMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
-                    side: THREE.BackSide, // 白色描边
-                });
-
-                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                const outlineMesh = new THREE.Mesh(outlineGeometry, outlineMaterial);
+            const boxAreaFonttextGeometry = new TextGeometry(Name, {
+                font: font,
+                size: 10, // 字体大小
+                height: 0.1, // 文字厚度
+            });
+            const boxAreaFontoutlineGeometry = new TextGeometry(Name, {
+                font: font,
+                size: 10,
+                height: 0.1,
+            });
+                const textMesh = new THREE.Mesh(boxAreaFonttextGeometry, boxAreaFonttextMaterial);
+                const outlineMesh = new THREE.Mesh(boxAreaFontoutlineGeometry, boxAreaFontoutlineMaterial);
 
                 // 调整描边宽度
                 outlineMesh.scale.set(1.05, 1.05, 1.05);
@@ -502,8 +529,7 @@ function createContainerWithText(container, zone) {
 
 
     // 加载模型
-    getModel('40box', function(object) {
-
+    getModel('40box2', function(object) {
 
         // 获取模型的边界框
         const bbox = new THREE.Box3().setFromObject(object);
@@ -561,8 +587,6 @@ function createContainerWithText(container, zone) {
 
             const textMesh = new THREE.Mesh(textGeometry, CntrNotextMaterial);
 
-
-
             // 计算文本的放置位置，使其贴在集装箱的两个长面
             const offsetX = (width / 2) + 1; // 稍微偏移，确保文字不与箱子重叠
 
@@ -619,10 +643,10 @@ function getModel(modelName, callback) {
                     if (child.isMesh) {
                         child.material = new THREE.MeshStandardMaterial({
                             color: 0xcccccc, // 金属灰色
-                            metalness: 0.9, // 金属度
-                            roughness: 0.1, // 粗糙度（值越小越光滑）
+                            metalness: 0.4, // 金属度
+                            roughness: 0.6, // 粗糙度（值越小越光滑）
                             envMap: scene.environment, // 设置环境贴图
-                            envMapIntensity: 1.0, // 环境贴图反射强度
+                            envMapIntensity: 0.6, // 环境贴图反射强度
                         });
                     }
                 });
@@ -645,8 +669,8 @@ function loadFontOnce(callback) {
         return;
     }
 
-    const loader = new FontLoader();
-    loader.load('/font/FangSong_Regular.json', function(font) {
+    const loader = new FontLoader();//'/font/FangSong_Regular.json'
+    loader.load('/font/helvetiker_regular.typeface.json', function(font) {
         cachedFont = font; // 缓存字体
         callback(font); // 使用加载的字体执行回调
     });
@@ -721,7 +745,7 @@ function createContainer40WithText(container, zone) {
     }
 
     // 加载模型
-    getModel('40box', function(object) {
+    getModel('40box2', function(object) {
 
 
         // 获取模型的边界框
@@ -811,44 +835,6 @@ function createContainer40WithText(container, zone) {
     });
 }
 
-
-// 创建叠加文字的材质
-function createTextMaterial(text, baseColor) {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512; // 宽度设置为较小值以保证高分辨率
-    canvas.height = 128;
-    const context = canvas.getContext("2d");
-
-    // 设置背景颜色（保留原来的颜色）
-    context.fillStyle = baseColor;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 设置文字样式并绘制
-    context.font = "64px Arial"; // 更小的文字尺寸
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillStyle = "white"; // 白色文字
-    context.fillText(text, canvas.width / 2, canvas.height / 2); // 居中绘制文字
-
-    // 创建纹理
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-
-    // 返回材质
-    return new THREE.MeshBasicMaterial({ map: texture });
-
-
-}
-
-
-
-// 调用辅助工具
-// const gridHelper = new THREE.GridHelper(200, 50);
-// scene.add(gridHelper);
-
-// const axesHelper = new THREE.AxesHelper(50);
-// scene.add(axesHelper);
-
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms)); // 返回一个在指定毫秒后 resolve 的 Promise
 }
@@ -860,12 +846,8 @@ async function processZones() {
         await delay(50); // 延迟 1000 毫秒（1秒）
         // 发起异步请求
         var boxZones = await ZoneQueryContainerInZoneCell(ZoneList.rows[i].Id);
-
         // 绘制容器网格
         drawContainerZoneGrid(ZoneList.rows[i], boxZones);
-
-        // 每次循环等待 1 秒钟
-
     }
 }
 processZones();
@@ -922,61 +904,104 @@ function createBuildingsWithPhysics(data, scene, world) {
 }
 
 function addTextToBuilding(building, text) {
+    const boundingBox = new THREE.Box3().setFromObject(building);
+    const width = boundingBox.max.x - boundingBox.min.x;
+    const height = boundingBox.max.y - boundingBox.min.y;
+    const depth = boundingBox.max.z - boundingBox.min.z;
 
-    loadFontOnce(function(font) {
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const textGeometryOptions = {
-            font: font,
-            size: 10, // 固定文字大小为 10
-            height: 0.2, // 文字厚度
-            curveSegments: 12, // 曲线细分度
-        };
+        // 选择使用的 Web 字体
+        const fontFamily = 'Noto Sans CJK';  // 可以替换为其他 Web 字体
+       // 创建文字 Mesh 的辅助方法
+       function createTextMesh(text, position, rotation) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.font = '40px ' + fontFamily; // 使用 Web 字体
+        const textWidth = ctx.measureText(text).width;
+        const textHeight = 40; // 设定固定高度，字体大小
+
+        // 设置画布大小
+        canvas.width = textWidth;
+        canvas.height = textHeight;
+
+        // 渲染文字
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(text, 0, textHeight * 0.8);
+
+        // 创建纹理
+        const texture = new THREE.CanvasTexture(canvas);
+
+        // 创建一个平面，作为文本的展示面
+        const geometry = new THREE.PlaneGeometry(textWidth, textHeight);
+
+        // 创建一个材质，并应用纹理
+        const textMesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture, transparent: true }));
+        textMesh.position.set(position.x, position.y, position.z);
+        textMesh.rotation.set(rotation.x, rotation.y, rotation.z);
+
+        // 计算文本几何体的包围盒
+        geometry.computeBoundingBox();
+        const textBoundingBox = geometry.boundingBox;
+
+        // 调整文字的位置，使其居中
+        const textOffsetX = -textBoundingBox.max.x / 2 - textBoundingBox.min.x / 2;
+        const textOffsetY = -textBoundingBox.max.y / 2 - textBoundingBox.min.y / 2;
+        textMesh.position.x += textOffsetX;
+        textMesh.position.y += textOffsetY;
+
+        return textMesh;
+    }
+
+         // 顶部文字（稍微向上调整）
+         const topText = createTextMesh(text, { x: 0, y: height + 10, z: 0 }, { x: -Math.PI / 2, y: 0, z: 0 });
+         building.add(topText);
+ 
+         // 前侧文字
+         const frontText = createTextMesh(text, { x: 0, y: 0, z: depth / 2 + 0.2 }, { x: 0, y: 0, z: 0 });
+         building.add(frontText);
+ 
+         // 后侧文字
+         const backText = createTextMesh(text, { x: 0, y: 0, z: -depth / 2 - 0.2 }, { x: 0, y: Math.PI, z: 0 });
+         building.add(backText);
+ 
+         // 左侧文字
+         const leftText = createTextMesh(text, { x: -width / 2 - 0.2, y: 0, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 });
+         building.add(leftText);
+ 
+         // 右侧文字
+         const rightText = createTextMesh(text, { x: width / 2 + 0.2, y: 0, z: 0 }, { x: 0, y: -Math.PI / 2, z: 0 });
+         building.add(rightText);
+    // loadFontOnce(function(font) {
+        // const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        // const textGeometryOptions = {
+        //     font: font,
+        //     size: 10, // 固定文字大小为 10
+        //     height: 0.2, // 文字厚度
+        //     curveSegments: 12, // 曲线细分度
+        // };
 
         // 获取建筑物的包围盒
-        const boundingBox = new THREE.Box3().setFromObject(building);
-        const width = boundingBox.max.x - boundingBox.min.x;
-        const height = boundingBox.max.y - boundingBox.min.y;
-        const depth = boundingBox.max.z - boundingBox.min.z;
-
+     
         // 创建文字 Mesh 的辅助方法
-        function createTextMesh(text, position, rotation) {
-            const textGeometry = new TextGeometry(text, textGeometryOptions);
+        // function createTextMesh(text, position, rotation) {
+        //     const textGeometry = new TextGeometry(text, textGeometryOptions);
 
-            // 手动计算文字的包围盒，用于调整位置
-            textGeometry.computeBoundingBox();
-            const textBoundingBox = textGeometry.boundingBox;
+        //     // 手动计算文字的包围盒，用于调整位置
+        //     textGeometry.computeBoundingBox();
+        //     const textBoundingBox = textGeometry.boundingBox;
 
-            const textHeight = textBoundingBox.max.y - textBoundingBox.min.y; // 文字高度
+        //     const textHeight = textBoundingBox.max.y - textBoundingBox.min.y; // 文字高度
 
-            // 调整文字位置，使其水平和垂直居中
-            position.y -= textHeight / 2; // 垂直居中
+        //     // 调整文字位置，使其水平和垂直居中
+        //     position.y -= textHeight / 2; // 垂直居中
 
-            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            textMesh.position.set(position.x, position.y, position.z);
-            textMesh.rotation.set(rotation.x, rotation.y, rotation.z);
-            return textMesh;
-        }
+        //     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        //     textMesh.position.set(position.x, position.y, position.z);
+        //     textMesh.rotation.set(rotation.x, rotation.y, rotation.z);
+        //     return textMesh;
+        // }
 
-        // 顶部文字（稍微向上调整）
-        const topText = createTextMesh(text, { x: 0, y: height, z: 0 }, { x: -Math.PI / 2, y: 0, z: 0 });
-        building.add(topText);
-
-        // 前侧文字
-        const frontText = createTextMesh(text, { x: 0, y: 0, z: depth / 2 + 0.2 }, { x: 0, y: 0, z: 0 });
-        building.add(frontText);
-
-        // 后侧文字
-        const backText = createTextMesh(text, { x: 0, y: 0, z: -depth / 2 - 0.2 }, { x: 0, y: Math.PI, z: 0 });
-        building.add(backText);
-
-        // 左侧文字
-        const leftText = createTextMesh(text, { x: -width / 2 - 0.2, y: 0, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 });
-        building.add(leftText);
-
-        // 右侧文字
-        const rightText = createTextMesh(text, { x: width / 2 + 0.2, y: 0, z: 0 }, { x: 0, y: -Math.PI / 2, z: 0 });
-        building.add(rightText);
-    });
+     
+    // });
 }
 // 遍历所有箱区并绘制
 createBuildingsWithPhysics(CommonAreaList, scene, world);
@@ -1070,6 +1095,12 @@ async function ZoneQueryContainerInZoneCell(Id) {
     }
 }
 //#endregion
+
+scene.traverse((object) => {
+    if (object instanceof THREE.Mesh) {
+        object.frustumCulled = true; // 确保物体是剔除的
+    }
+});
 
 // 监听搜索按钮点击事件
 document.getElementById('searchBtn').addEventListener('click', function() {
