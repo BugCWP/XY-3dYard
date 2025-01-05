@@ -80,44 +80,91 @@
         border-color: #66afe9;
         outline: none;
     }
-
-    #stats1, #stats2, #stats3 {
+    
+    #stats1,
+    #stats2,
+    #stats3 {
         position: absolute;
         top: 10px;
     }
-
-   #stats2 {
-      top: 60px;
+    
+    #stats2 {
+        top: 60px;
     }
-
+    
     #stats3 {
-       top: 110px;
+        top: 110px;
     }
 </style>
 
 <body>
-    <div style="position:fixed;padding: 20px;background-color: white;border-radius: 5px;right: 2%;top: 2%;">
-        <div>
-            <div style="display: inline-block;">视角切换：</div>
-            <div style="display: inline-block;">
-                <select id="cameraSelect">
+    <div style="position:fixed;padding: 20px;background-color: white;border-radius: 5px;right: 2%;top: 2%;width: auto;overflow: hidden;padding-top: 20px;">
+        <div id="content" style="transition: height 0.3s ease; height: auto;justify-content: flex-start;align-items: center;">
+            <div id="jiankong" style="width: 100%;margin-top: 10px;margin-bottom: 5px;display: flex;height: 60px;">
+                <div style="flex: 1;align-items: center;">系统状态:</div>
+                <div id="jiankong1" style="flex: 1;"></div>
+                <div id="jiankong2" style="flex: 1;"></div>
+                <div id="jiankong3" style="flex: 1;"></div>
+            </div>
+            <div>
+                <div style="display: inline-block;">视角切换：</div>
+                <div style="display: inline-block;">
+                    <select id="cameraSelect">
                     <option value="firstPersonCamera">第一人称视角</option>
                     <option value="globalCamera">第三人称视角</option>
                 </select>
+                </div>
             </div>
+            <div style="display: flex; align-items: center; gap: 10px;margin-top: 20px;">
+                <div>箱号搜索：</div>
+                <div class="button-container">
+                    <!-- 输入框 -->
+                    <input type="text" id="boxNumber" placeholder="请输入箱号">
+                    <!-- 搜索按钮 -->
+                    <button id="searchBtn">搜索</button>
+                    <!-- 取消按钮 -->
+                    <button id="cancelBtn">取消</button>
+                </div>
+            </div>
+            <div style="height: 20px;"></div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;margin-top: 20px;">
-            <div>箱号搜索：</div>
-            <div class="button-container">
-                <!-- 输入框 -->
-                <input type="text" id="boxNumber" placeholder="请输入箱号">
-                <!-- 搜索按钮 -->
-                <button id="searchBtn">搜索</button>
-                <!-- 取消按钮 -->
-                <button id="cancelBtn">取消</button>
-            </div>
+        <!-- 收起箭头 -->
+        <div id="toggleBtn" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); cursor: pointer; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 10px solid black;">
+            <!-- 箭头通过 border 绘制 -->
         </div>
     </div>
+
+    <script>
+        // 获取收起按钮和内容部分
+        const toggleBtn = document.getElementById("toggleBtn");
+        const content = document.getElementById("content");
+        let isExpanded = true;
+
+        // 初始高度
+        const contentHeight = content.scrollHeight;
+        const contentWidth = content.scrollWidth;
+
+        // 设置内容区域的初始高度
+        content.style.height = contentHeight + 'px';
+
+        // 点击收起按钮时切换显示内容
+        toggleBtn.addEventListener("click", function() {
+            if (isExpanded) {
+                content.style.height = '0'; // 收起内容
+                content.style.overflow = 'hidden';
+                content.style.width = '0';
+                toggleBtn.style.borderBottom = 'none';
+                toggleBtn.style.borderTop = '10px solid black'; // 切换为向下的箭头
+            } else {
+                content.style.height = contentHeight + 'px'; // 展开内容
+                content.style.overflow = 'hidden';
+                content.style.width = contentWidth + 'px';
+                toggleBtn.style.borderTop = 'none';
+                toggleBtn.style.borderBottom = '10px solid black'; // 切换为向上的箭头
+            }
+            isExpanded = !isExpanded;
+        });
+    </script>
 </body>
 
 </html>
