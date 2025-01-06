@@ -51624,7 +51624,7 @@ orbitControls.maxDistance = 1500; // 最大缩放距离，确保视角不会太�
 orbitControls.maxPolarAngle = Math.PI / 2; // 设置最大极角为 90°，防止俯视角度过小，避免进入地面
 
 // 设置摄像头的最小高度（避免进入地面以下）
-const minCameraHeight = 50; // 最小高度，避免摄像头低于地面
+const minCameraHeight = 20; // 最小高度，避免摄像头低于地面
 
 
 // 初始化物理世界
@@ -52115,7 +52115,7 @@ function createContainerWithText(container, zone) {
         loadFontOnce(function(font) {
             const textGeometry = new TextGeometry(CntrNo, {
                 font: font,
-                size: 2, // 字体大小
+                size: 0.5, // 字体大小
                 height: 0.1, // 厚度
             });
 
@@ -52126,29 +52126,63 @@ function createContainerWithText(container, zone) {
 
             if (zone.ZoneDirection) {
                 // 左侧面
-                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 - 2, zPos - 8); // 左侧面
+                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 +3, zPos +6); // 左侧面
                 textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMesh);
 
                 // 右侧面
                 const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 - 2, zPos + 8); // 右侧面
+                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 +3, zPos -6); // 右侧面
                 textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMeshRight);
             } else {
                 // 左侧面
-                textMesh.position.set(xPos - offsetX + 13, adjustedYPos + height / 2 - 2, zPos - 5); // 左侧面
+                textMesh.position.set(xPos - offsetX + 17, adjustedYPos + height / 2 +3, zPos - 5); // 左侧面
                 textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMesh);
 
                 // 右侧面
                 const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX - 13, adjustedYPos + height / 2 - 2, zPos + 5); // 右侧面
+                textMeshRight.position.set(xPos + offsetX , adjustedYPos + height / 2 +3, zPos + 5); // 右侧面
                 textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMeshRight);
             }
-
         });
+
+          // 加载 Logo 图片并应用到材质
+        const textureLoader = new TextureLoader();
+        textureLoader.load('/img/logo.png', function(texture) {
+              const logoMaterial = new MeshBasicMaterial({ map: texture, transparent: true });
+              if (zone.ZoneDirection) {  // 左侧面 Logo
+                const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+                const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
+                logoLeftMesh.position.set(xPos - (width / 2)+10, adjustedYPos + height / 2, zPos - (depth / 2)+12);
+                logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
+                scene.add(logoLeftMesh);
+    
+                // 右侧面 Logo
+                const logoRight = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+                const logoRightMesh = new Mesh(logoRight, logoMaterial);
+                logoRightMesh.position.set(xPos + (width / 2)-10, adjustedYPos + height / 2, zPos + (depth / 2)-10);
+                logoRightMesh.rotation.y = rotationY - Math.PI / 2;
+                scene.add(logoRightMesh);
+            }else {
+                      // 左侧面 Logo
+              const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+              const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
+              logoLeftMesh.position.set(xPos - (width / 2) +5, adjustedYPos + height / 2, zPos - (depth / 2)+7);
+              logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
+              scene.add(logoLeftMesh);
+  
+              // 右侧面 Logo
+              const logoRight = new PlaneGeometry(5,5);  // 根据实际情况调整大小
+              const logoRightMesh = new Mesh(logoRight, logoMaterial);
+              logoRightMesh.position.set(xPos + (width / 2)-5, adjustedYPos + height / 2, zPos + (depth / 2)-7);
+              logoRightMesh.rotation.y = rotationY - Math.PI / 2;
+              scene.add(logoRightMesh);
+                }
+            
+          });
     });
 }
 
@@ -52183,6 +52217,7 @@ function getModel(modelName, callback) {
                             envMap: scene.environment, // 设置环境贴图
                             envMapIntensity: 0.6, // 环境贴图反射强度
                             side: FrontSide, // 只渲染正面，背面不可见
+                            
                         });
                     }
                 });
@@ -52297,7 +52332,8 @@ function createContainer40WithText(container, zone) {
         const adjustedYPos = yPos - bottomOffset - 5.5; // 修正后的 Y 轴位置
         object.position.set(xPos, adjustedYPos, zPos);
         object.rotation.y = rotationY;
-
+        object.code = CntrNo;
+        object.IsBox = true;
 
         // 设置模型颜色
         object.traverse((child) => {
@@ -52334,7 +52370,7 @@ function createContainer40WithText(container, zone) {
         loadFontOnce(function(font) {
             const textGeometry = new TextGeometry(CntrNo, {
                 font: font,
-                size: 2, // 字体大小
+                size: 0.5, // 字体大小
                 height: 0.1, // 厚度
             });
 
@@ -52345,29 +52381,65 @@ function createContainer40WithText(container, zone) {
 
             if (zone.ZoneDirection) {
                 // 左侧面
-                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 - 2, zPos - 8); // 左侧面
+                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 +3, zPos+18); // 左侧面
                 textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMesh);
 
                 // 右侧面
                 const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 - 2, zPos + 8); // 右侧面
+                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 +3, zPos -18); // 右侧面
                 textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMeshRight);
             } else {
                 // 左侧面
-                textMesh.position.set(xPos - offsetX + 13, adjustedYPos + height / 2 - 2, zPos - 5); // 左侧面
+                textMesh.position.set(xPos - offsetX -10, adjustedYPos + height / 2 +3, zPos - 5); // 左侧面
                 textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMesh);
 
                 // 右侧面
                 const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX - 13, adjustedYPos + height / 2 - 2, zPos + 5); // 右侧面
+                textMeshRight.position.set(xPos + offsetX+10 , adjustedYPos + height / 2 +3, zPos + 5); // 右侧面
                 textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
                 scene.add(textMeshRight);
             }
 
         });
+
+
+          // 加载 Logo 图片并应用到材质
+          const textureLoader = new TextureLoader();
+          textureLoader.load('/img/logo.png', function(texture) {
+                const logoMaterial = new MeshBasicMaterial({ map: texture, transparent: true });
+                if (zone.ZoneDirection) {  // 左侧面 Logo
+                  const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+                  const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
+                  logoLeftMesh.position.set(xPos - (width / 2)+10, adjustedYPos + height / 2, zPos - (depth / 2)+25);
+                  logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
+                  scene.add(logoLeftMesh);
+      
+                  // 右侧面 Logo
+                  const logoRight = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+                  const logoRightMesh = new Mesh(logoRight, logoMaterial);
+                  logoRightMesh.position.set(xPos + (width / 2)-10, adjustedYPos + height / 2, zPos + (depth / 2)-20);
+                  logoRightMesh.rotation.y = rotationY - Math.PI / 2;
+                  scene.add(logoRightMesh);
+              }else {
+                        // 左侧面 Logo
+                const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+                const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
+                logoLeftMesh.position.set(xPos - (width / 2) +5, adjustedYPos + height / 2, zPos - (depth / 2)+19.5);
+                logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
+                scene.add(logoLeftMesh);
+    
+                // 右侧面 Logo
+                const logoRight = new PlaneGeometry(5,5);  // 根据实际情况调整大小
+                const logoRightMesh = new Mesh(logoRight, logoMaterial);
+                logoRightMesh.position.set(xPos + (width / 2)-5, adjustedYPos + height / 2, zPos + (depth / 2)-19.5);
+                logoRightMesh.rotation.y = rotationY - Math.PI / 2;
+                scene.add(logoRightMesh);
+                  }
+              
+            });
     });
 }
 
@@ -52607,7 +52679,7 @@ document.getElementById('cancelBtn').addEventListener('click', function() {
     document.getElementById("boxNumber").value = ""; // 清空输入框
     filterContainersByCntrNo("");
 });
-//CMAU9290902
+//TCLU6921870
 function filterContainersByCntrNo(cntrNo) {
     scene.traverse((child) => {
         if (child.IsBox) {
@@ -52617,10 +52689,12 @@ function filterContainersByCntrNo(cntrNo) {
                         // 设置透明度
                         if (cntrNo && child.code !== cntrNo) {
                             subChild.material.transparent = true;
-                            subChild.material.opacity = 0.1; // 变为半透明
+                            subChild.material.opacity = 0.3; // 变为半透明
+                            subChild.material.needsUpdate = true; // 确保更新材质
                         } else {
                             subChild.material.transparent = true;
                             subChild.material.opacity = 1.0; // 正常显示
+                            subChild.material.needsUpdate = true; // 确保更新材质
                         }
                     }
                 });
