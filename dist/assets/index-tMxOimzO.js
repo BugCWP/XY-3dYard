@@ -51544,7 +51544,7 @@ firstPersonCamera.position.set(300, 10, 300);
 const globalCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
 // 设置摄像机的位置，更靠近地面
 
-globalCamera.position.set(1200, 200, 1500);
+globalCamera.position.set(1000, 200, 1200);
 //globalCamera.lookAt(1000, 0, 1000); // 让摄像机指向地图中心
 globalCamera.updateProjectionMatrix();
 
@@ -51620,8 +51620,22 @@ orbitControls.screenSpacePanning = true; // 启用平移
 orbitControls.enableZoom = true; // 启用缩放
 orbitControls.maxDistance = 1500; // 最大缩放距离，确保视角不会太远
 
+
+// 设置最小距离，避免相机穿透物体
+orbitControls.minDistance = 10; // 设置相机的最小距离（单位：世界坐标系的单位，例如米）
+// 设置最大距离，避免相机距离过远
+orbitControls.maxDistance = 1500; // 可以根据实际情况调整
+
 // 设置俯视视角限制
-orbitControls.maxPolarAngle = Math.PI / 2; // 设置最大极角为 90°，防止俯视角度过小，避免进入地面
+//orbitControls.maxPolarAngle = Math.PI / 2; // 设置最大极角为 90°，防止俯视角度过小，避免进入地面
+
+orbitControls.target.set(1000, 0, 1000);
+orbitControls.update();
+
+// 设置相机的近裁剪面和远裁剪面（有助于防止穿模）
+globalCamera.near = 0.1; // 设置近裁剪面
+globalCamera.far = 2000; // 设置远裁剪面
+globalCamera.updateProjectionMatrix(); // 更新投影矩阵，确保设置生效
 
 // 设置摄像头的最小高度（避免进入地面以下）
 const minCameraHeight = 20; // 最小高度，避免摄像头低于地面
@@ -52000,6 +52014,45 @@ function drawContainerZoneGrid(zone, boxes) {
     });
 }
 
+// 创建 Canvas 绘制竖直文本
+function createVerticalTextTexture(text, fontSize, canvasWidth, canvasHeight) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    // 增加 DPI 比例因子
+    const dpiScale = 2; // 可以根据需要调整比例（如 2 倍或 3 倍）
+    canvas.width = canvasWidth * dpiScale;
+    canvas.height = canvasHeight * dpiScale;
+
+    // 设置文本样式
+    context.font = `${fontSize * dpiScale}px Arial`; // 增大字体尺寸来匹配更高的画布分辨率
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+
+    // 设置文本颜色为白色
+    context.fillStyle = 'white';
+
+    // 减小每个字符的垂直间距
+    const offsetY = fontSize * dpiScale * 1.1; // 缩小间距，调整字符之间的距离
+    let yPosition = offsetY;
+
+    // 绘制竖直排列的字符
+    for (let i = 0; i < text.length; i++) {
+        context.fillText(text[i], canvas.width / 2, yPosition);
+        yPosition += offsetY; // 增加 Y 轴偏移量，确保字符垂直排列
+    }
+
+    // 创建纹理，应用高 DPI 渲染结果
+    const texture = new CanvasTexture(canvas);
+
+    // 设置纹理过滤器，使其在缩小时不模糊
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.needsUpdate = true;
+
+    return texture;
+}
+
 
 // 创建集装箱的几何体和材质，带长面文字
 function createContainerWithText(container, zone) {
@@ -52112,77 +52165,137 @@ function createContainerWithText(container, zone) {
         world.addBody(body);
 
         // 创建并显示箱号
-        loadFontOnce(function(font) {
-            const textGeometry = new TextGeometry(CntrNo, {
-                font: font,
-                size: 0.5, // 字体大小
-                height: 0.1, // 厚度
-            });
+        // loadFontOnce(function(font) {
+        //     const textGeometry = new TextGeometry(CntrNo, {
+        //         font: font,
+        //         size: 0.5, // 字体大小
+        //         height: 0.1, // 厚度
+        //     });
 
-            const textMesh = new Mesh(textGeometry, CntrNotextMaterial);
+        //     const textMesh = new THREE.Mesh(textGeometry, CntrNotextMaterial);
 
-            // 计算文本的放置位置，使其贴在集装箱的两个长面
-            const offsetX = (width / 2) + 1; // 稍微偏移，确保文字不与箱子重叠
+        //     // 计算文本的放置位置，使其贴在集装箱的两个长面
+        //     const offsetX = (width / 2) + 1; // 稍微偏移，确保文字不与箱子重叠
 
-            if (zone.ZoneDirection) {
-                // 左侧面
-                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 +3, zPos +6); // 左侧面
-                textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMesh);
+        //     if (zone.ZoneDirection) {
+        //         // 左侧面
+        //         textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 + 3, zPos + 6); // 左侧面
+        //         textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         textMesh.rotation.x = Math.PI / 2; // 将文字旋转90度，使其竖直排列
+        //         scene.add(textMesh);
 
-                // 右侧面
-                const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 +3, zPos -6); // 右侧面
-                textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMeshRight);
-            } else {
-                // 左侧面
-                textMesh.position.set(xPos - offsetX + 17, adjustedYPos + height / 2 +3, zPos - 5); // 左侧面
-                textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMesh);
+        //         // 右侧面
+        //         const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+        //         textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 + 3, zPos - 6); // 右侧面
+        //         textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         textMeshRight.rotation.x = Math.PI / 2; // 将文字旋转90度，使其竖直排列
+        //         scene.add(textMeshRight);
+        //     } else {
+        //         // 左侧面
+        //         textMesh.position.set(xPos - offsetX + 17, adjustedYPos + height / 2 + 3, zPos - 5); // 左侧面
+        //         textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         textMesh.rotation.x = Math.PI / 2; // 将文字旋转90度，使其竖直排列
+        //         scene.add(textMesh);
 
-                // 右侧面
-                const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX , adjustedYPos + height / 2 +3, zPos + 5); // 右侧面
-                textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMeshRight);
-            }
+        //         // 右侧面
+        //         const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+        //         textMeshRight.position.set(xPos + offsetX, adjustedYPos + height / 2 + 3, zPos + 5); // 右侧面
+        //         textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         textMeshRight.rotation.x = Math.PI / 2; // 将文字旋转90度，使其竖直排列
+        //         scene.add(textMeshRight);
+        //     }
+        // });
+
+
+        const text = CntrNo; // 需要显示的文本
+        const fontSize = 5; // 字体大小
+        const canvasWidth = 200; // 画布宽度
+        const canvasHeight = fontSize * text.length * 1.4; // 画布高度，确保能够容纳所有字符
+
+        // 创建纹理
+        const texture = createVerticalTextTexture(text, fontSize, canvasWidth, canvasHeight);
+
+        // 创建一个带有纹理的材质
+        const material = new MeshBasicMaterial({
+            map: texture,
+            side: DoubleSide,
+            transparent: true, // 设置材质为透明
         });
 
-          // 加载 Logo 图片并应用到材质
+
+
+        if (zone.ZoneDirection) {
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometry = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const plane = new Mesh(geometry, material);
+            plane.position.set(xPos - 4.8, adjustedYPos + height / 2, zPos + 10);
+            plane.rotation.y = rotationY - Math.PI / 2; // 与集装箱对齐
+            scene.add(plane);
+
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometryright = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const planeright = new Mesh(geometryright, material);
+            planeright.position.set(xPos + 4.8, adjustedYPos + height / 2, zPos - 10);
+            planeright.rotation.y = rotationY + Math.PI / 2; // 与集装箱对齐
+            scene.add(planeright);
+        } else {
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometry = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const plane = new Mesh(geometry, material);
+            plane.position.set(xPos + 10, adjustedYPos + height / 2, zPos + 4.8);
+            plane.rotation.y = rotationY - Math.PI / 2; // 与集装箱对齐
+            scene.add(plane);
+
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometryright = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const planeright = new Mesh(geometryright, material);
+            planeright.position.set(xPos - 10, adjustedYPos + height / 2, zPos - 4.8);
+            planeright.rotation.y = rotationY + Math.PI / 2; // 与集装箱对齐
+            scene.add(planeright);
+        }
+        // 将平面添加到场景中
+
+
+
+
+        // 加载 Logo 图片并应用到材质
         const textureLoader = new TextureLoader();
         textureLoader.load('/img/logo.png', function(texture) {
-              const logoMaterial = new MeshBasicMaterial({ map: texture, transparent: true });
-              if (zone.ZoneDirection) {  // 左侧面 Logo
-                const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+            const logoMaterial = new MeshBasicMaterial({ map: texture, transparent: true });
+            if (zone.ZoneDirection) { // 左侧面 Logo
+                const logoLeft = new PlaneGeometry(5, 5); // 根据实际情况调整大小
                 const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
-                logoLeftMesh.position.set(xPos - (width / 2)+10, adjustedYPos + height / 2, zPos - (depth / 2)+12);
+                logoLeftMesh.position.set(xPos - (width / 2) + 9.6, adjustedYPos + height / 2, zPos - (depth / 2) + 12);
                 logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
                 scene.add(logoLeftMesh);
-    
+
                 // 右侧面 Logo
-                const logoRight = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+                const logoRight = new PlaneGeometry(5, 5); // 根据实际情况调整大小
                 const logoRightMesh = new Mesh(logoRight, logoMaterial);
-                logoRightMesh.position.set(xPos + (width / 2)-10, adjustedYPos + height / 2, zPos + (depth / 2)-10);
+                logoRightMesh.position.set(xPos + (width / 2) - 9.6, adjustedYPos + height / 2, zPos + (depth / 2) - 10);
                 logoRightMesh.rotation.y = rotationY - Math.PI / 2;
                 scene.add(logoRightMesh);
-            }else {
-                      // 左侧面 Logo
-              const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
-              const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
-              logoLeftMesh.position.set(xPos - (width / 2) +5, adjustedYPos + height / 2, zPos - (depth / 2)+7);
-              logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
-              scene.add(logoLeftMesh);
-  
-              // 右侧面 Logo
-              const logoRight = new PlaneGeometry(5,5);  // 根据实际情况调整大小
-              const logoRightMesh = new Mesh(logoRight, logoMaterial);
-              logoRightMesh.position.set(xPos + (width / 2)-5, adjustedYPos + height / 2, zPos + (depth / 2)-7);
-              logoRightMesh.rotation.y = rotationY - Math.PI / 2;
-              scene.add(logoRightMesh);
-                }
-            
-          });
+            } else {
+                // 左侧面 Logo
+                const logoLeft = new PlaneGeometry(5, 5); // 根据实际情况调整大小
+                const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
+                logoLeftMesh.position.set(xPos - (width / 2) + 5, adjustedYPos + height / 2, zPos - (depth / 2) + 7.5);
+                logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
+                scene.add(logoLeftMesh);
+
+                // 右侧面 Logo
+                const logoRight = new PlaneGeometry(5, 5); // 根据实际情况调整大小
+                const logoRightMesh = new Mesh(logoRight, logoMaterial);
+                logoRightMesh.position.set(xPos + (width / 2) - 5, adjustedYPos + height / 2, zPos + (depth / 2) - 7.5);
+                logoRightMesh.rotation.y = rotationY - Math.PI / 2;
+                scene.add(logoRightMesh);
+            }
+
+        });
     });
 }
 
@@ -52217,7 +52330,7 @@ function getModel(modelName, callback) {
                             envMap: scene.environment, // 设置环境贴图
                             envMapIntensity: 0.6, // 环境贴图反射强度
                             side: FrontSide, // 只渲染正面，背面不可见
-                            
+
                         });
                     }
                 });
@@ -52248,7 +52361,7 @@ function loadFontOnce(callback) {
 }
 
 // 创建一个缓存对象来存储已生成的文本纹理
-const CntrNotextMaterial = new MeshBasicMaterial({ color: 0xffffff });
+new MeshBasicMaterial({ color: 0xffffff });
 
 function createContainer40WithText(container, zone) {
     var { X, Y, Z, ContainerType, Color: Color$1, CntrNo, FX } = container;
@@ -52366,80 +52479,131 @@ function createContainer40WithText(container, zone) {
         object.userData = { body: body };
         world.addBody(body);
 
-        // 创建并显示箱号
-        loadFontOnce(function(font) {
-            const textGeometry = new TextGeometry(CntrNo, {
-                font: font,
-                size: 0.5, // 字体大小
-                height: 0.1, // 厚度
-            });
+        // // 创建并显示箱号
+        // loadFontOnce(function(font) {
+        //     const textGeometry = new TextGeometry(CntrNo, {
+        //         font: font,
+        //         size: 0.5, // 字体大小
+        //         height: 0.1, // 厚度
+        //     });
 
-            const textMesh = new Mesh(textGeometry, CntrNotextMaterial);
+        //     const textMesh = new THREE.Mesh(textGeometry, CntrNotextMaterial);
 
-            // 计算文本的放置位置，使其贴在集装箱的两个长面
-            const offsetX = (width / 2) + 1; // 稍微偏移，确保文字不与箱子重叠
+        //     // 计算文本的放置位置，使其贴在集装箱的两个长面
+        //     const offsetX = (width / 2) + 1; // 稍微偏移，确保文字不与箱子重叠
 
-            if (zone.ZoneDirection) {
-                // 左侧面
-                textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 +3, zPos+18); // 左侧面
-                textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMesh);
+        //     if (zone.ZoneDirection) {
+        //         // 左侧面
+        //         textMesh.position.set(xPos - offsetX + 1, adjustedYPos + height / 2 + 3, zPos + 18); // 左侧面
+        //         textMesh.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         scene.add(textMesh);
 
-                // 右侧面
-                const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 +3, zPos -18); // 右侧面
-                textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMeshRight);
-            } else {
-                // 左侧面
-                textMesh.position.set(xPos - offsetX -10, adjustedYPos + height / 2 +3, zPos - 5); // 左侧面
-                textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMesh);
+        //         // 右侧面
+        //         const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+        //         textMeshRight.position.set(xPos + offsetX - 1, adjustedYPos + height / 2 + 3, zPos - 18); // 右侧面
+        //         textMeshRight.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         scene.add(textMeshRight);
+        //     } else {
+        //         // 左侧面
+        //         textMesh.position.set(xPos - offsetX - 10, adjustedYPos + height / 2 + 3, zPos - 5); // 左侧面
+        //         textMesh.rotation.y = rotationY + Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         scene.add(textMesh);
 
-                // 右侧面
-                const textMeshRight = new Mesh(textGeometry, CntrNotextMaterial);
-                textMeshRight.position.set(xPos + offsetX+10 , adjustedYPos + height / 2 +3, zPos + 5); // 右侧面
-                textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
-                scene.add(textMeshRight);
-            }
+        //         // 右侧面
+        //         const textMeshRight = new THREE.Mesh(textGeometry, CntrNotextMaterial);
+        //         textMeshRight.position.set(xPos + offsetX + 10, adjustedYPos + height / 2 + 3, zPos + 5); // 右侧面
+        //         textMeshRight.rotation.y = rotationY - Math.PI / 2; // 确保文字朝向平行于箱子的长边
+        //         scene.add(textMeshRight);
+        //     }
 
+        // });
+
+
+        const text = CntrNo; // 需要显示的文本
+        const fontSize = 5; // 字体大小
+        const canvasWidth = 200; // 画布宽度
+        const canvasHeight = fontSize * text.length * 1.4; // 画布高度，确保能够容纳所有字符
+
+        // 创建纹理
+        const texture = createVerticalTextTexture(text, fontSize, canvasWidth, canvasHeight);
+
+        // 创建一个带有纹理的材质
+        const material = new MeshBasicMaterial({
+            map: texture,
+            side: DoubleSide,
+            transparent: true, // 设置材质为透明
         });
 
 
-          // 加载 Logo 图片并应用到材质
-          const textureLoader = new TextureLoader();
-          textureLoader.load('/img/logo.png', function(texture) {
-                const logoMaterial = new MeshBasicMaterial({ map: texture, transparent: true });
-                if (zone.ZoneDirection) {  // 左侧面 Logo
-                  const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
-                  const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
-                  logoLeftMesh.position.set(xPos - (width / 2)+10, adjustedYPos + height / 2, zPos - (depth / 2)+25);
-                  logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
-                  scene.add(logoLeftMesh);
-      
-                  // 右侧面 Logo
-                  const logoRight = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
-                  const logoRightMesh = new Mesh(logoRight, logoMaterial);
-                  logoRightMesh.position.set(xPos + (width / 2)-10, adjustedYPos + height / 2, zPos + (depth / 2)-20);
-                  logoRightMesh.rotation.y = rotationY - Math.PI / 2;
-                  scene.add(logoRightMesh);
-              }else {
-                        // 左侧面 Logo
-                const logoLeft = new PlaneGeometry(5, 5);  // 根据实际情况调整大小
+
+        if (zone.ZoneDirection) {
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometry = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const plane = new Mesh(geometry, material);
+            plane.position.set(xPos - 4.8, adjustedYPos + height / 2, zPos + 20);
+            plane.rotation.y = rotationY - Math.PI / 2; // 与集装箱对齐
+            scene.add(plane);
+
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometryright = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const planeright = new Mesh(geometryright, material);
+            planeright.position.set(xPos + 4.8, adjustedYPos + height / 2, zPos - 20);
+            planeright.rotation.y = rotationY + Math.PI / 2; // 与集装箱对齐
+            scene.add(planeright);
+        } else {
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometry = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const plane = new Mesh(geometry, material);
+            plane.position.set(xPos + 20, adjustedYPos + height / 2, zPos + 4.8);
+            plane.rotation.y = rotationY - Math.PI / 2; // 与集装箱对齐
+            scene.add(plane);
+
+            // 设置平面的位置
+            // 创建一个平面并将纹理应用于此平面
+            const geometryright = new PlaneGeometry(canvasWidth / 10, canvasHeight / 10);
+            const planeright = new Mesh(geometryright, material);
+            planeright.position.set(xPos - 20, adjustedYPos + height / 2, zPos - 4.8);
+            planeright.rotation.y = rotationY + Math.PI / 2; // 与集装箱对齐
+            scene.add(planeright);
+        }
+
+        // 加载 Logo 图片并应用到材质
+        const textureLoader = new TextureLoader();
+        textureLoader.load('/img/logo.png', function(texture) {
+            const logoMaterial = new MeshBasicMaterial({ map: texture, transparent: true });
+            if (zone.ZoneDirection) { // 左侧面 Logo
+                const logoLeft = new PlaneGeometry(5, 5); // 根据实际情况调整大小
                 const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
-                logoLeftMesh.position.set(xPos - (width / 2) +5, adjustedYPos + height / 2, zPos - (depth / 2)+19.5);
+                logoLeftMesh.position.set(xPos - (width / 2) + 10, adjustedYPos + height / 2, zPos - (depth / 2) + 25);
                 logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
                 scene.add(logoLeftMesh);
-    
+
                 // 右侧面 Logo
-                const logoRight = new PlaneGeometry(5,5);  // 根据实际情况调整大小
+                const logoRight = new PlaneGeometry(5, 5); // 根据实际情况调整大小
                 const logoRightMesh = new Mesh(logoRight, logoMaterial);
-                logoRightMesh.position.set(xPos + (width / 2)-5, adjustedYPos + height / 2, zPos + (depth / 2)-19.5);
+                logoRightMesh.position.set(xPos + (width / 2) - 10, adjustedYPos + height / 2, zPos + (depth / 2) - 20);
                 logoRightMesh.rotation.y = rotationY - Math.PI / 2;
                 scene.add(logoRightMesh);
-                  }
-              
-            });
+            } else {
+                // 左侧面 Logo
+                const logoLeft = new PlaneGeometry(5, 5); // 根据实际情况调整大小
+                const logoLeftMesh = new Mesh(logoLeft, logoMaterial);
+                logoLeftMesh.position.set(xPos - (width / 2) + 5, adjustedYPos + height / 2, zPos - (depth / 2) + 19.5);
+                logoLeftMesh.rotation.y = rotationY + Math.PI / 2;
+                scene.add(logoLeftMesh);
+
+                // 右侧面 Logo
+                const logoRight = new PlaneGeometry(5, 5); // 根据实际情况调整大小
+                const logoRightMesh = new Mesh(logoRight, logoMaterial);
+                logoRightMesh.position.set(xPos + (width / 2) - 5, adjustedYPos + height / 2, zPos + (depth / 2) - 19.5);
+                logoRightMesh.rotation.y = rotationY - Math.PI / 2;
+                scene.add(logoRightMesh);
+            }
+
+        });
     });
 }
 
@@ -52466,48 +52630,51 @@ processZones();
 // 创建建筑物
 function createBuildingsWithPhysics(data, scene, world) {
     data.forEach(building => {
-        // 计算建筑物的宽度、深度和中心位置
-        if (building.High == 0 || building.High == null) {
-            building.High = 3;
+        //围墙特殊处理
+        if (building.Name == '围墙') ; else {
+            // 计算建筑物的宽度、深度和中心位置
+            if (building.High == 0 || building.High == null) {
+                building.High = 3;
+            }
+            const width = building.X2 - building.X1; // X 方向宽度
+            const depth = building.Y2 - building.Y1; // Y 方向深度
+            const height = building.High * 5; // Z 方向高度
+            const centerX = (building.X1 + building.X2) / 2;
+            const centerZ = (building.Y1 + building.Y2) / 2;
+
+            // 创建几何体
+            const geometry = new BoxGeometry(width, height, depth);
+
+            // 创建材质
+            const material = new MeshLambertMaterial({
+                color: new Color(building.Color), // 使用 JSON 中的颜色
+                opacity: 1,
+                transparent: true
+            });
+
+            // 创建网格
+            const mesh = new Mesh(geometry, material);
+
+            // 设置位置（y 轴为高度的一半）
+            mesh.position.set(centerX, height / 2, centerZ);
+
+
+
+            // 显示建筑物名称
+            if (building.Name) {
+                addTextToBuilding(mesh, building.Name);
+            }
+            // 添加到场景
+            scene.add(mesh);
+            // 添加物理碰撞体
+            const shape = new Box(new Vec3(width / 2, height / 2, depth / 2));
+            const body = new Body({
+                mass: 0, // 静态物体
+                shape: shape,
+                position: new Vec3(centerX, height / 2, centerZ)
+            });
+            world.addBody(body);
         }
-        const width = building.X2 - building.X1; // X 方向宽度
-        const depth = building.Y2 - building.Y1; // Y 方向深度
-        const height = building.High * 5; // Z 方向高度
-        const centerX = (building.X1 + building.X2) / 2;
-        const centerZ = (building.Y1 + building.Y2) / 2;
-
-        // 创建几何体
-        const geometry = new BoxGeometry(width, height, depth);
-
-        // 创建材质
-        const material = new MeshLambertMaterial({
-            color: new Color(building.Color), // 使用 JSON 中的颜色
-            opacity: 1,
-            transparent: true
-        });
-
-        // 创建网格
-        const mesh = new Mesh(geometry, material);
-
-        // 设置位置（y 轴为高度的一半）
-        mesh.position.set(centerX, height / 2, centerZ);
-
-
-
-        // 显示建筑物名称
-        if (building.Name) {
-            addTextToBuilding(mesh, building.Name);
-        }
-        // 添加到场景
-        scene.add(mesh);
-        // 添加物理碰撞体
-        const shape = new Box(new Vec3(width / 2, height / 2, depth / 2));
-        const body = new Body({
-            mass: 0, // 静态物体
-            shape: shape,
-            position: new Vec3(centerX, height / 2, centerZ)
-        });
-        world.addBody(body);
     });
 }
 
